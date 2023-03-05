@@ -4,7 +4,6 @@ from food.models import *
 
 MEAL_PARTS = {'Завтрак': 0.3, 'Обед': 0.25, 'Ужин': 0.2}
 
-
 class Meal:
 
     def __init__(self,
@@ -54,11 +53,11 @@ class Meal:
                     return dish1, dish2
 
 class DayMenu:
-    def __init__(self, target: str = '', breakfast_to_use_id=None, lunch_to_use_id=None, dinner_to_use_id=None):
-        self._breakfast = Eating(metabolism=METABOLISM, cooking_time=20, category='breakfast', alias='breakfast',
+    def __init__(self, METABOLISM, target: str = '', breakfast_to_use_id=None, lunch_to_use_id=None, dinner_to_use_id=None):
+        self._breakfast = Meal(metabolism=METABOLISM, cooking_time=20, category='breakfast', alias='breakfast',
                                  dish_to_use_id=breakfast_to_use_id)
-        self._lunch = Lunch(metabolism=METABOLISM, cooking_time=30)
-        self._dinner = Eating(metabolism=METABOLISM, cooking_time=20, category='second_dish', alias='dinner',
+        self._lunch = Meal(metabolism=METABOLISM, cooking_time=30)
+        self._dinner = Meal(metabolism=METABOLISM, cooking_time=20, category='second_dish', alias='dinner',
                               dish_to_use_id=dinner_to_use_id)
         self.day_menu_variants = self.get_menu(100)
 
