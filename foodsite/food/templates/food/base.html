@@ -1,0 +1,67 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{{title}}</title>
+<!--
+Neaty HTML Template
+http://www.templatemo.com/tm-501-neaty
+-->
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400" rel="stylesheet" />  <!-- Google web font "Open Sans" -->
+    <link type="text/css" href="{% static 'food/css/bootstrap.min.css' %}" rel="stylesheet" />                                      <!-- Bootstrap style -->
+    <link type="text/css" href="{% static 'food/css/magnific-popup.css' %}" rel="stylesheet" />                                <!-- Magnific pop up style, http://dimsemenov.com/plugins/magnific-popup/ -->
+    <link type="text/css" href="{% static 'food/css/templatemo-style.css' %}" rel="stylesheet">                                   <!-- Templatemo style -->
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+        <!--[if lt IE 9]>
+          <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+          <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+          <![endif]-->
+</head>
+<body>
+{% block mainmenu %}
+    <div class="container">
+        <div class="row">
+            <div class="tm-left-right-container">
+                <!-- Left column: logo and menu -->
+                <div class="tm-blue-bg tm-left-column">
+                    <div class="tm-logo-div text-xs-center">
+                         {% if request.user.is_authenticated %}
+                            <li class="tm-nav-item">
+                            {{ user.username }} | <a href="{%url 'logout' %}" class="tm-nav-item-link">Выйти</a>
+                            </li>
+                         {% else %}
+                            <li class="tm-nav-item">
+                            <a href="{%url 'signin' %}" class="tm-nav-item-link">Регистрация</a> | <a href="{%url 'login' %}" class="tm-nav-item-link">Войти</a>
+                            </li>
+                         {% endif %}
+                        <a href="{%url 'home' %}"> <img src="{% static 'food/img/tm-neaty-logo.png' %}" alt="Logo"></a>
+                        <h1 class="tm-site-name">Книга рецептов</h1>
+                    </div>
+                    <nav class="tm-main-nav">
+                        <ul class="tm-main-nav-ul">
+
+                            {% for m in menu %}
+                                    <li class="tm-nav-item">
+                                        <a href="{%url m.url_name %}" class="tm-nav-item-link">{{ m.title }} </a>
+                                    </li>
+
+                            {% endfor %}
+                        </ul>
+                    </nav>
+                </div> <!-- Left column: logo and menu -->
+            </div>
+        </div>
+    </div>
+{% endblock mainmenu %}
+{% block content %}
+
+{% endblock %}
+</body>
+</html>
+

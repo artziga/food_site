@@ -1,0 +1,68 @@
+{% extends 'food/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="tm-right-column">
+    <div class="tm-content-div">
+                            <!-- Welcome section -->
+                            <section class="tm-section">
+                                {% if is_menu_exists %}
+                                <header>
+                                    <h2 class="tm-blue-text tm-welcome-title tm-margin-b-45">Меню на неделю</h2>
+
+                                </header>
+                                    <h3>{{ daily_menu.0.1.0.day_of_week }}</h3>
+                                <ul>
+
+                                    {% for dishes in daily_menu %}
+                                        <h2>{{ dishes.0 }}</h2>
+                                        {% for dish in dishes.1 %}
+                                            <h2><a href="{{ dish.dish.href }}">{{ dish.dish }}</a></h2>
+                                            <img src="{{ dish.dish.photo }}" width="300" height="300" alt='Фотка блюда' class="img-fluid">
+                                            <li> Калорий: {{ dish.dish.calories }}</li>
+                                            <li>Полное время готовки: {{ dish.dish.total_cooking_time }}</li>
+                                            <li>Активное время готовки: {{ dish.dish.active_cooking_time }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </section>
+                            {% else %}
+                            <h2 class="tm-blue-text tm-welcome-title tm-margin-b-45">У вас пока нет меню.</h2>
+                            {% endif %}
+                            {% if is_profile_exists %}
+                            <a href="{%url 'regenerate_menu' %}">
+                              <button type="submit" class="custom-btn btn-16">Собрать новое меню</button>
+                                </a>
+                             <a href="{% url 'reset_the_questionnaire_data' %}">
+                              <button type="submit" class="custom-btn btn-16">Сбросить анкету</button>
+                            </a>
+                            {% else %}
+                            <h2 class="tm-blue-text tm-welcome-title tm-margin-b-45">Для того, чтобы мы могли собрать его для вас, нужно хаполнить анкету.</h2>
+                             <a href="{% url 'collect_user_data' %}">
+                              <button type="submit" class="custom-btn btn-16">Заполнить анкету</button>
+                            </a>
+                            {% endif %}
+                            <p><p/>
+
+                            {% if is_menu_exists %}
+                            {% for day, den in days.items %}
+                            {% if selected_day == day %}
+                            <button type="submit" class="custom-btn1" >{{den}}</button>
+                            {% else %}
+                            <a href="{% url 'show_menu_by_days' day %}">
+                              <button type="submit" class="custom-btn btn-16">{{den}}</button>
+                            </a>
+                            {% endif %}
+                            {% endfor %}
+                            {% endif %}
+
+
+
+
+
+
+                        </div>
+    </div>
+</div>
+{% endblock content %}

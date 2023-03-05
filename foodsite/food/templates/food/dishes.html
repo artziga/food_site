@@ -1,0 +1,51 @@
+{% extends 'food/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="tm-right-column">
+    <div class="tm-content-div">
+                            <!-- Welcome section -->
+                            <section class="tm-section">
+                                <header>
+                                    <h2 class="tm-blue-text tm-welcome-title tm-margin-b-45">Список рецептов</h2>
+                                </header>
+
+                                <ul>
+                                {% for dish in dishes %}
+                                <h2><a href="{{ dish.dish.href }}">{{ dish.dish }}</a></h2>
+                                <img src="{{ dish.dish.photo }}" width="300" height="300" alt='Фотка блюда' class="img-fluid">
+
+                                <li> Калорий: {{ dish.dish.calories }}</li>
+                                <li>Полное время готовки: {{ dish.dish.total_cooking_time }}</li>
+                                    <li>Активное время готовки: {{ dish.dish.active_cooking_time }}</li>
+                                {% endfor %}
+                                </ul>
+<!--                               <nav>-->
+<!--                                    <ul>-->
+<!--                                        {% for p in paginator.page_range %}-->
+<!--                                        <li> <a href="?page={{ p }}">{{ p }}</a>-->
+<!--                                        </li>-->
+<!--                                        {% endfor %}-->
+<!--                                    </ul>-->
+
+<!--                                </nav>-->
+                            </section>
+                            <div class="example1-pagination">
+                            {% if page_obj.has_previous %}
+                                <a class="tm-blue-text" href="?page=1">&laquo; Первая </a>
+                                <a class="tm-blue-text" href="?page={{ page_obj.previous_page_number }}">Предыдущая</a>
+                            {% endif %}
+
+                            <span class="example1-pagination_link example1-pagination_link__active">
+                                Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}.
+                            </span>
+
+                            {% if page_obj.has_next %}
+                                <a class="example1-pagination_link" href="?page={{ page_obj.next_page_number }}">Следующая </a>
+                                <a class="example1-pagination_link" href="?page={{ page_obj.paginator.num_pages }}">Последняя &raquo;</a>
+                            {% endif %}
+                        </div>
+    </div>
+</div>
+{% endblock content %}
