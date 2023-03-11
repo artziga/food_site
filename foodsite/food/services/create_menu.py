@@ -4,6 +4,7 @@ from food.models import *
 
 MEAL_PARTS = {'Завтрак': 0.3, 'Обед': 0.25, 'Ужин': 0.2}
 
+
 class Meal:
 
     def __init__(self,
@@ -22,7 +23,7 @@ class Meal:
         self._calories_range = self._calories_needed * self._low_hysteresis, self._calories_needed * self._high_hysteresis
         self._dish_to_use_id = dish_to_use_id
         self._meal = meal
-        self.dish = self.get_set_of_dish()
+        self.dish = self.get_set_of_dish(meal=meal)
 
     def get_dish(self, calories_filter: bool, calories_range: tuple = None):
         filters_list = {'calories__isnull': False, 'tags__meal__meal_name': self._meal}
@@ -46,19 +47,22 @@ class Meal:
                 if low_calories <= dish1.calories <= high_calories:
                     return dish1,
                 else:
-                    calories_range = (self._calories_range[0] - dish1.calories, self._calories_range[1] - dish1.calories)
+                    calories_range = (
+                        self._calories_range[0] - dish1.calories, self._calories_range[1] - dish1.calories)
                     dish2 = self.get_dish(calories_filter=True, calories_range=calories_range)
                     if not dish2:
                         continue
                     return dish1, dish2
 
+
 class DayMenu:
-    def __init__(self, METABOLISM, target: str = '', breakfast_to_use_id=None, lunch_to_use_id=None, dinner_to_use_id=None):
+    def __init__(self, METABOLISM, target: str = '', breakfast_to_use_id=None, lunch_to_use_id=None,
+                 dinner_to_use_id=None):
         self._breakfast = Meal(metabolism=METABOLISM, cooking_time=20, category='breakfast', alias='breakfast',
-                                 dish_to_use_id=breakfast_to_use_id)
+                               dish_to_use_id=breakfast_to_use_id)
         self._lunch = Meal(metabolism=METABOLISM, cooking_time=30)
         self._dinner = Meal(metabolism=METABOLISM, cooking_time=20, category='second_dish', alias='dinner',
-                              dish_to_use_id=dinner_to_use_id)
+                            dish_to_use_id=dinner_to_use_id)
         self.day_menu_variants = self.get_menu(100)
 
 
@@ -97,10 +101,3 @@ def get_daily_menu(metabolism):
     for meal in meals:
         daily_menu.append([meal, get_set_of_dish(metabolism=metabolism, meal=meal)])
     return daily_menu
-
-
-
-
-
-
-

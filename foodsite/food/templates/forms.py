@@ -48,9 +48,9 @@ class CollectDataForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        age = cleaned_data.get('age')
         height = cleaned_data.get('height')
         weight = cleaned_data.get('weight')
-        age = cleaned_data.get('age')
         man = cleaned_data.get('gender')
 
         """Расчет базового обмена веществ по формуле Маффина-Джеора:

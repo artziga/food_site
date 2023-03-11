@@ -32,26 +32,26 @@
                             {% endif %}
                             {% if is_profile_exists %}
                             <a href="{%url 'regenerate_menu' %}">
-                              <button type="submit" class="custom-btn btn-16">Собрать новое меню</button>
+                              <button type="submit" class="tm-button">Собрать новое меню</button>
                                 </a>
                              <a href="{% url 'reset_the_questionnaire_data' %}">
-                              <button type="submit" class="custom-btn btn-16">Сбросить анкету</button>
+                              <button type="submit" class="tm-button">Сбросить анкету</button>
                             </a>
                             {% else %}
                             <h2 class="tm-blue-text tm-welcome-title tm-margin-b-45">Для того, чтобы мы могли собрать его для вас, нужно хаполнить анкету.</h2>
                              <a href="{% url 'collect_user_data' %}">
-                              <button type="submit" class="custom-btn btn-16">Заполнить анкету</button>
+                              <button type="submit" class="tm-button">Заполнить анкету</button>
                             </a>
                             {% endif %}
                             <p><p/>
 
                             {% if is_menu_exists %}
                             {% for day, den in days.items %}
-                            {% if selected_day == day %}
-                            <button type="submit" class="custom-btn1" >{{den}}</button>
+                            {% if day == selected_day%}
+                            <button type="submit" class="tm-button button-active">{{den}}</button>
                             {% else %}
                             <a href="{% url 'show_menu_by_days' day %}">
-                              <button type="submit" class="custom-btn btn-16">{{den}}</button>
+                              <button type="submit" class="tm-button">{{den}}</button>
                             </a>
                             {% endif %}
                             {% endfor %}

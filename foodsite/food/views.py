@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth import logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.views import LoginView
+from django.db.models import Prefetch
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.urls import reverse, reverse_lazy
@@ -48,6 +49,13 @@ class Dishes(DataMixin, ListView):
         return dict(list(context.items()) + list(c_def.items()))
 
 
+class DishFilter:
+    model = Dish
+    form_class = FilterForm
+    template_name = 'food/filter.html'
+    success_url = reverse_lazy('home')
+
+
 class DishesByCategory(DataMixin, ListView):
     paginate_by = 10
     model = Dish
@@ -91,8 +99,11 @@ class DishesByIngredient(DataMixin, ListView):
 
     def get_queryset(self):
         selected_ingredient = self.kwargs['ing_id']
-        menu = (Recipe.objects.select_related('dish').
-                filter(ingredient__pk=selected_ingredient))
+        menu = (Recipe.objects
+                .select_related('dish')
+                .filter(ingredient__pk=selected_ingredient))
+        qs = Recipe.objects.filter(ingredient=selected_ingredient)
+        menu = (Dish.objects.prefetch_related(Prefetch('recipe_set', queryset=qs)))
         return menu
 
 
