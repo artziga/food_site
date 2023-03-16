@@ -13,7 +13,6 @@
                                       <input name="search" placeholder="Искать здесь..." type="search">
                                       <button type="submit">Поиск</button>
                                 </form>
-
                                 <ul>
                                 {% for ingredient in ingredients %}
                                 <p> <h2><a href="{% url 'show_dishes_by_ing' ingredient.pk %}">{{ ingredient }}</li> </p>

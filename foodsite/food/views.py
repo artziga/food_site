@@ -115,8 +115,35 @@ class Dishes(DataMixin, ListView, FilterFormClass):
         return url
 
 
-class Ingredients(DataMixin, ListView):
+class SearchView(DataMixin, ListView):
     paginate_by = 10
+    model = Dish
+    template_name = 'food/dishes.html'
+    context_object_name = 'dishes'
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        searched = bool(self.request.GET.get('search'))
+        print(searched)
+        c_def = self.get_user_context(
+            title='Поиск',
+            is_filtered=bool(searched)
+        )
+        context = dict(list(context.items()) + list(c_def.items()))
+        print(context)
+        return dict(list(context.items()) + list(c_def.items()))
+
+    def get_queryset(self):
+        search = self.request.GET.get('search')
+        if search:
+            queryset = Dish.objects.filter(dish_name__icontains=search)
+        else:
+            queryset = Dish.objects.all()
+        return queryset
+
+
+class Ingredients(DataMixin, ListView):
+    paginate_by = 20
     model = Ingredient
     template_name = 'food/ingredients.html'
     context_object_name = 'ingredients'
@@ -127,8 +154,8 @@ class Ingredients(DataMixin, ListView):
         return dict(list(context.items()) + list(c_def.items()))
 
     def get_queryset(self):
-        search = self.request.GET.get('search')
-        queryset = Ingredient.objects.filter(ingredient_name__icontains=search)
+        search = self.request.GET.get('search', None)
+        queryset = Ingredient.objects.filter(ingredient_name__icontains=search) if search else Ingredient.objects.all()
         return queryset
 
 

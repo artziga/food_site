@@ -10,20 +10,29 @@
                                 <header>
                                     <h2 class="tm-blue-text tm-welcome-title tm-margin-b-45">Список рецептов</h2>
                                 </header>
+                                <form action="{% url 'search' %}" method="get">
+                                  <input name="search" placeholder="Искать здесь..." type="search">
+                                  <button type="submit">Поиск</button>
+                                </form>
+                                {% if request.resolver_match.view_name != "search" %}
+
+
                                 <label for="dropdown-checkbox" class="dropdown-btn">Фильтр</label>
                                 <input type="checkbox" id="dropdown-checkbox" class="dropdown-checkbox">
-                                <form method="get">
-                                    <input name="search" placeholder="Искать здесь..." type="search">
-                                      <button type="submit">Поиск</button>
                                 <div class="dropdown-content">
+                                    <form method="get" action="{{get_suc}}">
                                         {{ filter_form.as_p }}
                                         <button type="submit">Применить</button>
+                                    </form>
 
-                                    {% if is_filtered %}
-                                    <a href="{% url 'dishes' %}"><button type="submit">Сбросить</button></a>
-                                    {% endif %}
                                 </div>
-                                </form>
+                                {% endif %}
+
+                                {% if is_filtered %}
+
+                                    <a href="{% url 'dishes' %}"><button type="submit">Сбросить фильтр</button></a>
+                                    {% endif %}
+
                                 <ul>
                                 {% for dish in dishes %}
                                     <h2><a href="{{ dish.href }}">{{ dish }}</a></h2>

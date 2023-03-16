@@ -10,6 +10,7 @@ urlpatterns = [
     path('regenerate_menu/', regenerate_menu, name='regenerate_menu'),
     path('show_menu/<slug:day_slug>/', ShowMenu.as_view(), name='show_menu_by_days'),
     path('dishes/', Dishes.as_view(), name='dishes'),
+    path('dishes/search', SearchView.as_view(), name='search'),
     path('ingredients/', Ingredients.as_view(), name='ingredients'),
     path('ingredients/<int:ing_id>/', DishesByIngredient.as_view(), name='show_dishes_by_ing'),
     path('cats/', Categories.as_view(), name='cats'),
