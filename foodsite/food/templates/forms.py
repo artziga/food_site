@@ -2,8 +2,9 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import Min, Max
 
-from food.models import Profile
+from food.models import Profile, Dish, Meal
 
 
 class RegisterUserForm(UserCreationForm):
@@ -71,3 +72,87 @@ class CollectDataForm(forms.ModelForm):
 
 class MenuGenerateForm(forms.Form):
     generate_menu = forms.BooleanField(required=False, widget=forms.HiddenInput(), initial=True)
+
+
+class FilterForm(forms.Form):
+    limits = Dish.objects.aggregate(
+        min_calories=Min('calories'),
+        max_calories=Max('calories'),
+        min_active_cooking_time=Min('active_cooking_time'),
+        max_active_cooking_time=Max('active_cooking_time'),
+        min_total_cooking_time=Min('total_cooking_time'),
+        max_total_cooking_time=Max('total_cooking_time')
+    )
+    categories = forms.ModelMultipleChoiceField(
+        queryset=Meal.objects.all(),
+        required=False,
+        label='Категории',
+        widget=forms.CheckboxSelectMultiple,
+        to_field_name='slug'
+
+    )
+    min_cal = forms.IntegerField(
+        required=False,
+        label='Минимальное число калорий',
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': f"От {limits['min_calories']}"})
+    )
+    max_cal = forms.IntegerField(
+        required=False,
+        label='Максимальное число калорий',
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': f"До {limits['max_calories']}"})
+    )
+    min_a_time = forms.IntegerField(
+        required=False,
+        label='Минимальное активное время готовки',
+        widget=forms.NumberInput(
+            attrs={'class': 'form-input', 'placeholder': f"От {limits['min_active_cooking_time']}"})
+    )
+    max_a_time = forms.IntegerField(
+        required=False,
+        label='Максимальное активное время готовки',
+        widget=forms.NumberInput(
+            attrs={'class': 'form-input', 'placeholder': f"До {limits['max_active_cooking_time']}"})
+    )
+    min_t_time = forms.IntegerField(
+        required=False,
+        label='Минимальное полное время готовки',
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': f"От {limits['min_total_cooking_time']}"})
+    )
+    max_t_time = forms.IntegerField(
+        required=False,
+        label='Максимальное полное время готовки',
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': f"До {limits['max_total_cooking_time']}"})
+    )
+
+    def get_query_params(self):
+        query_params = {}
+        for key, value in self.cleaned_data.items():
+            if value:
+                query_params[key] = value
+        return query_params
+
+    def filter(self, queryset):
+        filters = {}
+        selected_categories = self.cleaned_data.get('categories')
+        min_calories = self.cleaned_data.get('min_cal')
+        max_calories = self.cleaned_data.get('max_cal')
+        min_active_cooking_time = self.cleaned_data.get('min_a_time')
+        max_active_cooking_time = self.cleaned_data.get('max_a_time')
+        min_total_cooking_time = self.cleaned_data.get('min_t_time')
+        max_total_cooking_time = self.cleaned_data.get('max_t_time')
+        if selected_categories:
+            filters['tags__meal__in'] = selected_categories
+        if min_calories:
+            filters['calories__gte'] = min_calories
+        if max_calories:
+            filters['calories__lte'] = max_calories
+        if min_active_cooking_time:
+            filters['active_cooking_time__gte'] = min_active_cooking_time
+        if max_active_cooking_time:
+            filters['active_cooking_time__lte'] = max_active_cooking_time
+        if min_total_cooking_time:
+            filters['total_cooking_time__gte'] = min_total_cooking_time
+        if max_total_cooking_time:
+            filters['total_cooking_time__lte'] = max_total_cooking_time
+        queryset = queryset.filter(**filters).distinct()
+        return queryset

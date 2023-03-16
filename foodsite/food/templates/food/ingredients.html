@@ -9,6 +9,10 @@
                                 <header>
                                     <h2 class="tm-blue-text tm-welcome-title tm-margin-b-45">Список рецептов</h2>
                                 </header>
+                                <form action="" method="get">
+                                      <input name="search" placeholder="Искать здесь..." type="search">
+                                      <button type="submit">Поиск</button>
+                                </form>
 
                                 <ul>
                                 {% for ingredient in ingredients %}

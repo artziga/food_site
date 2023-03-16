@@ -11,7 +11,8 @@
                                 </header>
                                 <ul>
                                 {% for category in categories %}
-                                <p> <h2><a href="{% url 'show_dishes_by_cat' category.slug %}">{{ category }}</li> </p>
+                                    {% url 'dishes' as url %}
+                                <p> <h2><a href="{{ url|add:'?categories='|add:category.slug }}">{{ category }}</li> </p>
                                     </a>
                                     </h2>
                                 {% endfor %}

@@ -1,18 +1,20 @@
+import urllib.parse
+
 from django import forms
 from django.contrib.auth import logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.views import LoginView
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
 from food.services.create_menu import get_set_of_dish, get_daily_menu
 import random
 
 from .models import *
-from django.views.generic import ListView, CreateView
+from django.views.generic import ListView, CreateView, FormView
 
-from .templates.forms import RegisterUserForm, LoginUserForm, CollectDataForm, MenuGenerateForm
+from .templates.forms import RegisterUserForm, LoginUserForm, CollectDataForm, MenuGenerateForm, FilterForm
 from .templates.utils import DataMixin
 
 days = {
@@ -26,6 +28,29 @@ days = {
 }
 
 
+def get_filters(request):
+    filters = {}
+    min_calories = request.GET.get('min_cal')
+    max_calories = request.GET.get('max_cal')
+    min_active_cooking_time = request.GET.get('min_a_time')
+    max_active_cooking_time = request.GET.get('max_a_time')
+    min_total_cooking_time = request.GET.get('min_t_time')
+    max_total_cooking_time = request.GET.get('max_t_time')
+    if min_calories:
+        filters['calories__gte'] = min_calories
+    if max_calories:
+        filters['calories__lte'] = max_calories
+    if min_active_cooking_time:
+        filters['active_cooking_time__gte'] = min_active_cooking_time
+    if max_active_cooking_time:
+        filters['active_cooking_time__lte'] = max_active_cooking_time
+    if min_total_cooking_time:
+        filters['total_cooking_time__gte'] = min_total_cooking_time
+    if max_total_cooking_time:
+        filters['total_cooking_time__lte'] = max_total_cooking_time
+    return filters
+
+
 class Home(DataMixin, ListView):
     paginate_by = 10
     model = Dish
@@ -37,41 +62,57 @@ class Home(DataMixin, ListView):
         return dict(list(context.items()) + list(c_def.items()))
 
 
-class Dishes(DataMixin, ListView):
+class FilterFormClass:
+    def get_filled_filter_parameters(self):
+        filter_parameters = {}
+        get_dict = self.request.GET
+        for parameter in get_dict:
+            if get_dict[parameter]:
+                if parameter == 'categories':
+                    filter_parameters['categories'] = get_dict.getlist('categories')
+                else:
+                    filter_parameters[parameter] = get_dict[parameter]
+        return filter_parameters
+
+    def filter_parameters(self):
+        parameters_for_url = self.request.GET.copy()
+        if 'page' in parameters_for_url:
+            del parameters_for_url['page']
+        filled_parameters = self.get_filled_filter_parameters()
+        return parameters_for_url, filled_parameters
+
+
+class Dishes(DataMixin, ListView, FilterFormClass):
     paginate_by = 10
     model = Dish
     template_name = 'food/dishes.html'
     context_object_name = 'dishes'
+    success_url = reverse_lazy('dishes')
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
-        c_def = self.get_user_context(title='Блюда')
-        return dict(list(context.items()) + list(c_def.items()))
-
-
-class DishFilter:
-    model = Dish
-    form_class = FilterForm
-    template_name = 'food/filter.html'
-    success_url = reverse_lazy('home')
-
-
-class DishesByCategory(DataMixin, ListView):
-    paginate_by = 10
-    model = Dish
-    template_name = 'food/dishes.html'
-    context_object_name = 'dishes'
-
-    def get_context_data(self, *, object_list=None, **kwargs):
-        context = super().get_context_data(**kwargs)
-        c_def = self.get_user_context(title='Блюда')
+        filter_params, parameters = self.filter_parameters()
+        c_def = self.get_user_context(
+            title='Блюда',
+            filter_params=filter_params.urlencode(),
+            filter_form=FilterForm(initial=parameters),
+            is_filtered=bool(parameters))
         return dict(list(context.items()) + list(c_def.items()))
 
     def get_queryset(self):
-        selected_cat = self.kwargs['cat_slug']
-        menu = (Dish.objects.
-                filter(tags__meal__slug=selected_cat))
-        return menu
+        queryset = super().get_queryset()
+        form = FilterForm(self.request.GET)
+        if form.is_valid():
+            queryset = form.filter(queryset)
+        return queryset
+
+    def get_success_url(self):
+        url = reverse('dishes')
+        form = FilterForm(self.request.GET)
+        query_params = form.get_query_params()
+        if query_params:
+            url += '?' + '&'.join([f'{key}={value}' for key, value in query_params.items()])
+        return url
 
 
 class Ingredients(DataMixin, ListView):
@@ -85,8 +126,13 @@ class Ingredients(DataMixin, ListView):
         c_def = self.get_user_context(title='Ингредиенты')
         return dict(list(context.items()) + list(c_def.items()))
 
+    def get_queryset(self):
+        search = self.request.GET.get('search')
+        queryset = Ingredient.objects.filter(ingredient_name__icontains=search)
+        return queryset
 
-class DishesByIngredient(DataMixin, ListView):
+
+class DishesByIngredient(DataMixin, ListView, FilterFormClass):
     paginate_by = 10
     model = Dish
     template_name = 'food/dishes.html'
@@ -94,16 +140,22 @@ class DishesByIngredient(DataMixin, ListView):
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
-        c_def = self.get_user_context(title='Блюда')
+        filter_params, parameters = self.filter_parameters()
+        c_def = self.get_user_context(
+            title='Блюда',
+            filter_params=filter_params.urlencode(),
+            filter_form=FilterForm(initial=parameters),
+            is_filtered=bool(parameters))
         return dict(list(context.items()) + list(c_def.items()))
 
     def get_queryset(self):
         selected_ingredient = self.kwargs['ing_id']
-        menu = (Recipe.objects
-                .select_related('dish')
-                .filter(ingredient__pk=selected_ingredient))
-        qs = Recipe.objects.filter(ingredient=selected_ingredient)
-        menu = (Dish.objects.prefetch_related(Prefetch('recipe_set', queryset=qs)))
+        menu = Dish.objects.filter(
+            Q(recipe__ingredient__pk=selected_ingredient)
+        )
+        form = FilterForm(self.request.GET)
+        if form.is_valid():
+            menu = form.filter(menu)
         return menu
 
 
