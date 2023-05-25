@@ -1,0 +1,33 @@
+{% extends 'food/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="tm-right-column">
+    <div class="tm-content-div">
+    <title>Title</title>
+    <h2><a href="{{ dish.href }}">{{ dish }}</a></h2>
+                                    <div class="dish-container">
+                                        <img src="{{ dish.photo }}" width="300" height="300" alt='Фотка блюда' class="img-fluid">
+                                        <div>
+                                            <p> Калорий: {{ dish.calories }}</p>
+                                            <p>Полное время готовки: {{ dish.total_cooking_time }}</p>
+                                            <p>Активное время готовки: {{ dish.active_cooking_time }}</p>
+                                        </div>
+                                    </div>
+
+                                        {% for ingredient in ingredients %}
+                <div class="dish-container">
+
+            <p><a href="{% url 'ingredient' ingredient.pk %}">{{ingredient.ingredient}}</a></p>
+
+            <p>{{ingredient.quantity}}</p>
+                    <p>{{ingredient.measure_unit}}</p>
+                    </div>
+        {% endfor %}
+
+        <section class="tm-section">
+            </section>
+            </div>
+</div>
+{% endblock content %}

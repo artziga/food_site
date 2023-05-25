@@ -1,59 +1,26 @@
-import urllib.parse
-
-from django import forms
+from django.contrib.auth.models import User
 from django.contrib.auth import logout
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.views import LoginView
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.db.models import Prefetch, Q
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
+from django.forms import modelform_factory
 from food.services.create_menu import get_set_of_dish, get_daily_menu
 import random
+from django.db.transaction import atomic
 
 from .models import *
-from django.views.generic import ListView, CreateView, FormView
+from django.views.generic import ListView, CreateView, DetailView
 
-from .templates.forms import RegisterUserForm, LoginUserForm, CollectDataForm, MenuGenerateForm, FilterForm
-from .templates.utils import DataMixin
-
-days = {
-    'monday': 'Понедельник',
-    'tuesday': 'Вторник',
-    'wednesday': 'Среда',
-    'thursday': 'Четверг',
-    'friday': 'Пятница',
-    'saturday': 'Суббота',
-    'sunday': 'Воскресенье'
-}
-
-
-def get_filters(request):
-    filters = {}
-    min_calories = request.GET.get('min_cal')
-    max_calories = request.GET.get('max_cal')
-    min_active_cooking_time = request.GET.get('min_a_time')
-    max_active_cooking_time = request.GET.get('max_a_time')
-    min_total_cooking_time = request.GET.get('min_t_time')
-    max_total_cooking_time = request.GET.get('max_t_time')
-    if min_calories:
-        filters['calories__gte'] = min_calories
-    if max_calories:
-        filters['calories__lte'] = max_calories
-    if min_active_cooking_time:
-        filters['active_cooking_time__gte'] = min_active_cooking_time
-    if max_active_cooking_time:
-        filters['active_cooking_time__lte'] = max_active_cooking_time
-    if min_total_cooking_time:
-        filters['total_cooking_time__gte'] = min_total_cooking_time
-    if max_total_cooking_time:
-        filters['total_cooking_time__lte'] = max_total_cooking_time
-    return filters
+from .templates.forms import *
+from .templates.utils import DataMixin, days, get_filters
 
 
 class Home(DataMixin, ListView):
-    paginate_by = 10
-    model = Dish
+    """Показывает приветственную страницу"""
     template_name = 'food/index.html'
 
     def get_context_data(self, *, object_list=None, **kwargs):
@@ -92,18 +59,29 @@ class Dishes(DataMixin, ListView, FilterFormClass):
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
         filter_params, parameters = self.filter_parameters()
+        user_black_list = set(
+            DishBlackList.objects.
+            values_list('dish', flat=True).
+            filter(user=self.request.user, added_by_ingredient__isnull=True))
+        user_black_list_by_ingredients = set(DishBlackList.objects.values_list(
+            'dish', flat=True).filter(user=self.request.user, added_by_ingredient__isnull=False))
+
         c_def = self.get_user_context(
             title='Блюда',
             filter_params=filter_params.urlencode(),
             filter_form=FilterForm(initial=parameters),
-            is_filtered=bool(parameters))
+            is_filtered=bool(parameters),
+            black_list=user_black_list,
+            black_list_by_ingredients=user_black_list_by_ingredients,
+        )
         return dict(list(context.items()) + list(c_def.items()))
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        user = self.request.user
         form = FilterForm(self.request.GET)
         if form.is_valid():
-            queryset = form.filter(queryset)
+            queryset = form.filter(queryset, user)
         return queryset
 
     def get_success_url(self):
@@ -115,6 +93,28 @@ class Dishes(DataMixin, ListView, FilterFormClass):
         return url
 
 
+class DishDetailView(DataMixin, DetailView):
+    model = Dish
+    context_object_name = 'dish'
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        dish = self.get_object()
+        ingredients = dish.recipe_set.select_related('ingredient').all()
+        c_def = self.get_user_context(title='Блюдо', ingredients=ingredients)
+        return dict(list(context.items()) + list(c_def.items()))
+
+
+class IngredientDetailView(DataMixin, DetailView):
+    model = Ingredient
+    context_object_name = 'ingredient'
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        c_def = self.get_user_context(title='Блюдо')
+        return dict(list(context.items()) + list(c_def.items()))
+
+
 class SearchView(DataMixin, ListView):
     paginate_by = 10
     model = Dish
@@ -124,13 +124,11 @@ class SearchView(DataMixin, ListView):
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
         searched = bool(self.request.GET.get('search'))
-        print(searched)
         c_def = self.get_user_context(
             title='Поиск',
             is_filtered=bool(searched)
         )
         context = dict(list(context.items()) + list(c_def.items()))
-        print(context)
         return dict(list(context.items()) + list(c_def.items()))
 
     def get_queryset(self):
@@ -142,7 +140,7 @@ class SearchView(DataMixin, ListView):
         return queryset
 
 
-class Ingredients(DataMixin, ListView):
+class IngredientsView(DataMixin, ListView):
     paginate_by = 20
     model = Ingredient
     template_name = 'food/ingredients.html'
@@ -150,13 +148,68 @@ class Ingredients(DataMixin, ListView):
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
-        c_def = self.get_user_context(title='Ингредиенты')
+        user_black_list = set(
+            IngredientBlackList.objects.values_list('ingredient', flat=True).filter(user=self.request.user))
+
+        c_def = self.get_user_context(title='Ингредиенты', black_list=user_black_list)
         return dict(list(context.items()) + list(c_def.items()))
 
     def get_queryset(self):
+        user = self.request.user
+        if self.request.user.is_authenticated:
+            is_staff = User.objects.get(username=user).is_staff
+            if is_staff:
+                queryset = Ingredient.objects.all()
+            else:
+                queryset = Ingredient.objects.filter(Q(user__isnull=True) | Q(user=user))
+        else:
+            queryset = Ingredient.objects.filter(Q(user__isnull=True))
         search = self.request.GET.get('search', None)
-        queryset = Ingredient.objects.filter(ingredient_name__icontains=search) if search else Ingredient.objects.all()
+        queryset = queryset.filter(ingredient_name__icontains=search) if search else queryset.all()
         return queryset
+
+
+class AddIngredientView(DataMixin, CreateView):
+    template_name = 'food/add_ingredient.html'
+    form_class = AddIngredientForm
+    model = Ingredient
+    success_url = reverse_lazy('ingredients')
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        c_def = self.get_user_context(title='Добавить ингредиент')
+        return dict(list(context.items()) + list(c_def.items()))
+
+
+class AddRecipeView(DataMixin, CreateView):
+    template_name = 'food/add_dish.html'
+    model = Dish
+    form_class = AddDishForm
+    success_url = reverse_lazy('dishes')
+
+    def get_success_url(self):
+        return reverse_lazy('dishes')
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        add_ingredients_form = RecipeFormSet(queryset=Recipe.objects.none())
+        c_def = self.get_user_context(title='Добавить рецепт', add_ingredients_formset=add_ingredients_form)
+        return dict(list(context.items()) + list(c_def.items()))
+
+    def form_valid(self, form):
+        ingredients_formset = RecipeFormSet(self.request.POST, queryset=Recipe.objects.none())
+        with atomic():
+            dish = form.save()
+            if ingredients_formset.is_valid():
+                for recipe_form in ingredients_formset:
+                    if recipe_form.cleaned_data:
+                        recipe = recipe_form.save(commit=False)
+                        recipe.dish = dish  # Назначаем dish
+                        recipe.save()
+
+            else:
+                print(ingredients_formset.errors, ingredients_formset.non_form_errors())
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class DishesByIngredient(DataMixin, ListView, FilterFormClass):
@@ -177,12 +230,13 @@ class DishesByIngredient(DataMixin, ListView, FilterFormClass):
 
     def get_queryset(self):
         selected_ingredient = self.kwargs['ing_id']
+        user = self.request.user
         menu = Dish.objects.filter(
             Q(recipe__ingredient__pk=selected_ingredient)
         )
-        form = FilterForm(self.request.GET)
-        if form.is_valid():
-            menu = form.filter(menu)
+        # form = FilterForm(self.request.GET)
+        # if form.is_valid():
+        #     menu = form.filter(menu, user)
         return menu
 
 
@@ -195,6 +249,70 @@ class Categories(DataMixin, ListView):
         context = super().get_context_data(**kwargs)
         c_def = self.get_user_context(title='Категории')
         return dict(list(context.items()) + list(c_def.items()))
+
+
+class BlackListView(DataMixin, ListView):
+    template_name = 'food/categories.html'
+    context_object_name = 'black_list'
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        c_def = self.get_user_context(title='Чёрный список')
+        return dict(list(context.items()) + list(c_def.items()))
+
+
+class DishBlackListView(BlackListView):
+    model = DishBlackList
+
+
+class IngredientBlackListView(BlackListView):
+    model = IngredientBlackList
+
+
+def add_ingredient_to_black_list_view(request, pk):
+    user = request.user
+    ingredient = Ingredient.objects.get(pk=pk)
+    try:
+        IngredientBlackList.objects.create(user=user, ingredient=ingredient)
+    except IntegrityError:
+        print('Попытка добавить ингредиент в чс дважды')
+    related_dishes = Dish.objects.filter(
+        Q(recipe__ingredient__pk=ingredient.pk))
+    for dish in related_dishes:
+        try:
+            DishBlackList.objects.create(user=user, dish=dish, added_by_ingredient=ingredient)
+        except IntegrityError:
+            print('Попытка добавить в чс блюдо дважды')
+
+    return redirect(request.META.get('HTTP_REFERER'))
+
+
+def add_dish_to_black_list_view(request, pk):
+    user = request.user
+    dish = Dish.objects.get(pk=pk)
+    try:
+        DishBlackList.objects.create(user=user, dish=dish)
+    except IntegrityError:
+        print('Попытка добавить в чс блюдо дважды')
+
+    return redirect(request.META.get('HTTP_REFERER'))
+
+
+def remove_ingredient_from_black_list_view(request, pk):
+    user = request.user
+    ingredient = Ingredient.objects.get(pk=pk)
+    IngredientBlackList.objects.filter(user=user, ingredient=ingredient).delete()
+    dishes_to_delete = DishBlackList.objects.filter(user=user, added_by_ingredient=ingredient)
+    dishes_to_delete.delete()
+    return redirect(request.META.get('HTTP_REFERER'))
+
+
+def remove_dish_from_black_list_view(request, pk):
+    user = request.user
+    dish = Dish.objects.get(pk=pk)
+    dish_to_delete = DishBlackList.objects.get(user=user, dish=dish, added_by_ingredient__isnull=True)
+    dish_to_delete.delete()
+    return redirect(request.META.get('HTTP_REFERER'))
 
 
 class RegisterUser(DataMixin, CreateView):
@@ -242,6 +360,19 @@ class CollectData(DataMixin, CreateView):
         return reverse_lazy('regenerate_menu')
 
 
+def prepare_list(qs):
+    meals = ['Завтрак', 'Обед', 'Ужин']
+    daily_menu = [[meal, []] for meal in meals]
+    for i in qs:
+        if i.meal == 'Завтрак':
+            daily_menu[0][1].append(i)
+        elif i.meal == 'Обед':
+            daily_menu[1][1].append(i)
+        elif i.meal == 'Ужин':
+            daily_menu[2][1].append(i)
+    return daily_menu
+
+
 class ShowMenu(DataMixin, ListView):
     model = Dish
     form_class = Dishes
@@ -264,21 +395,9 @@ class ShowMenu(DataMixin, ListView):
 
         return dict(list(context.items()) + list(c_def.items()))
 
-    def prepare_list(self, qs):
-        meals = ['Завтрак', 'Обед', 'Ужин']
-        daily_menu = [[meal, []] for meal in meals]
-        for i in qs:
-            if i.meal == 'Завтрак':
-                daily_menu[0][1].append(i)
-            elif i.meal == 'Обед':
-                daily_menu[1][1].append(i)
-            elif i.meal == 'Ужин':
-                daily_menu[2][1].append(i)
-        return daily_menu
-
     def get_queryset(self):
-        menu = self.prepare_list(Menu.objects.select_related('dish').
-        filter(
+        menu = prepare_list(Menu.objects.select_related('dish').
+            filter(
             user=self.request.user,
             day_of_week=days[self.kwargs['day_slug']]))
         return menu
@@ -296,9 +415,10 @@ def reset_the_questionnaire_data(request):
 
 
 def create_menu(request):
-    metabolism = Profile.objects.get(user=request.user).basic_metabolism
+    user = request.user
+    metabolism = Profile.objects.get(user=user).basic_metabolism
     week_menu = []
-    menues = [get_daily_menu(metabolism=metabolism) for i in range(7)]
+    menues = [get_daily_menu(metabolism=metabolism, user=user) for i in range(7)]
     random.shuffle(menues)
     for day, menu in zip(days.keys(), menues):
         for meal in menu:

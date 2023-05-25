@@ -1,10 +1,12 @@
 from django import forms
+from django.forms.models import modelformset_factory
+
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 from django.db import models
-from django.db.models import Min, Max
+from django.db.models import Min, Max, Q
 
-from food.models import Profile, Dish, Meal
+from food.models import *
 
 
 class RegisterUserForm(UserCreationForm):
@@ -24,28 +26,9 @@ class LoginUserForm(AuthenticationForm):
 
 
 class CollectDataForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        gender_choices = [(None, '-------'),
-                          (True, 'Мужской'),
-                          (False, 'Женский')]
-        physical_activity_choice = [
-            (1, 'Минимальные нагрузки (сидячая работа)'),
-            (2, 'Необременительные тренировки 3 раза в неделю'),
-            (3, 'Тренировки 5 раз в неделю (работа средней тяжести)'),
-            (4, 'Интенсивные тренировки 5 раз в неделю'),
-            (5, 'Ежедневные тренировки'),
-            (6, 'Ежедневные интенсивные тренировки или занятия 2 раза в день'),
-            (7, 'Тяжелая физическая работа или интенсивные тренировки 2 раза в день')
-        ]
-        self.fields['physical_activity'] = forms.IntegerField(
-            label='Уровень физической активности',
-            widget=forms.Select(choices=physical_activity_choice))
-        self.fields['gender'] = forms.NullBooleanField(label='Пол', widget=forms.Select(choices=gender_choices))
-
-    weight = forms.IntegerField(label='Вес')
-    height = forms.IntegerField(label='Рост')
-    basic_metabolism = forms.IntegerField(widget=forms.HiddenInput(), disabled=True, required=False)
+    # weight = forms.IntegerField(label='Вес')
+    # height = forms.IntegerField(label='Рост')
+    # basic_metabolism = forms.IntegerField(label='', widget=forms.HiddenInput(), disabled=True, required=False)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -70,8 +53,41 @@ class CollectDataForm(forms.ModelForm):
         fields = ['age', 'gender', 'weight', 'height', 'physical_activity']
 
 
-class MenuGenerateForm(forms.Form):
-    generate_menu = forms.BooleanField(required=False, widget=forms.HiddenInput(), initial=True)
+class AddIngredientForm(forms.ModelForm):
+    ingredient_name = forms.CharField(
+        label='Ингредиент',
+        error_messages={
+            'unique': 'Данный ингредиент скоро будет добавлен, попробуйте проверить его позже'
+        })
+
+    class Meta:
+        model = Ingredient
+        fields = ['ingredient_name', 'protein_value', 'fats_value', 'carbohydrates_value', 'energy_value']
+
+
+class AddForm(forms.ModelForm):
+    class Meta:
+        model = UserIngredient
+        fields = ['add_to_common']
+
+
+class AddDishForm(forms.ModelForm):
+    class Meta:
+        model = Dish
+        fields = '__all__'
+
+
+class AddRecipeForm(forms.ModelForm):
+    class Meta:
+        model = Recipe
+        exclude = ('dish',)
+
+
+RecipeFormSet = modelformset_factory(
+    Recipe,
+    form=AddRecipeForm,
+    extra=6
+)
 
 
 class FilterForm(forms.Form):
@@ -87,41 +103,44 @@ class FilterForm(forms.Form):
         queryset=Meal.objects.all(),
         required=False,
         label='Категории',
-        widget=forms.CheckboxSelectMultiple,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-style checkbox-group'}),
         to_field_name='slug'
 
     )
     min_cal = forms.IntegerField(
         required=False,
         label='Минимальное число калорий',
-        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': f"От {limits['min_calories']}"})
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': f"От {limits['min_calories']}"})
     )
+
     max_cal = forms.IntegerField(
         required=False,
         label='Максимальное число калорий',
-        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': f"До {limits['max_calories']}"})
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': f"До {limits['max_calories']}"})
     )
     min_a_time = forms.IntegerField(
         required=False,
         label='Минимальное активное время готовки',
         widget=forms.NumberInput(
-            attrs={'class': 'form-input', 'placeholder': f"От {limits['min_active_cooking_time']}"})
+            attrs={'class': 'form-control', 'placeholder': f"От {limits['min_active_cooking_time']}"})
     )
     max_a_time = forms.IntegerField(
         required=False,
         label='Максимальное активное время готовки',
         widget=forms.NumberInput(
-            attrs={'class': 'form-input', 'placeholder': f"До {limits['max_active_cooking_time']}"})
+            attrs={'class': 'form-control', 'placeholder': f"До {limits['max_active_cooking_time']}"})
     )
     min_t_time = forms.IntegerField(
         required=False,
         label='Минимальное полное время готовки',
-        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': f"От {limits['min_total_cooking_time']}"})
+        widget=forms.NumberInput(
+            attrs={'class': 'form-control', 'placeholder': f"От {limits['min_total_cooking_time']}"})
     )
     max_t_time = forms.IntegerField(
         required=False,
         label='Максимальное полное время готовки',
-        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': f"До {limits['max_total_cooking_time']}"})
+        widget=forms.NumberInput(
+            attrs={'class': 'form-control', 'placeholder': f"До {limits['max_total_cooking_time']}"})
     )
 
     def get_query_params(self):
@@ -131,9 +150,11 @@ class FilterForm(forms.Form):
                 query_params[key] = value
         return query_params
 
-    def filter(self, queryset):
+    def filter(self, queryset, user):
+        # queryset = queryset.filter(Q(user__isnull=True) | Q(user=user))
         filters = {}
         selected_categories = self.cleaned_data.get('categories')
+        ingredient = self.cleaned_data.get('ingredient')
         min_calories = self.cleaned_data.get('min_cal')
         max_calories = self.cleaned_data.get('max_cal')
         min_active_cooking_time = self.cleaned_data.get('min_a_time')
@@ -142,6 +163,8 @@ class FilterForm(forms.Form):
         max_total_cooking_time = self.cleaned_data.get('max_t_time')
         if selected_categories:
             filters['tags__meal__in'] = selected_categories
+        if ingredient:
+            filters['recipe__'] = selected_categories
         if min_calories:
             filters['calories__gte'] = min_calories
         if max_calories:

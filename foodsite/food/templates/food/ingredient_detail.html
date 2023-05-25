@@ -1,0 +1,28 @@
+{% extends 'food/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="tm-right-column">
+    <div class="tm-content-div">
+    <title>Title</title>
+    <h2><a href="{{ dish.href }}">{{ dish }}</a></h2>
+                                            <div>
+                                            <p> {{ ingredient }}</p>
+                                                <form action="{%url 'show_dishes_by_ing' ingredient.pk  %}">
+                                                <button class="btn btn-primary" type="submit">Показать блюда с этим ингредиентом</button>
+                                                  </form>
+                                                <div/>
+                                            <p>Белки: {{ ingredient.protein_value }}</p>
+                                            <p>Жиры: {{ ingredient.fats_value }}</p>
+                                            <p>Углеводы: {{ ingredient.carbohydrates_value }}</p>
+                                            <p>Энергетическая ценность (на 100 г.): {{ ingredient.energy_value }}</p>
+                                            <p>Отдел: {{ ingredient.department }}</p>
+                                        </div>
+                                    </div>
+
+
+
+            </div>
+</div>
+{% endblock content %}

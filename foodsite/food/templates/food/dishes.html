@@ -10,20 +10,26 @@
                                 <header>
                                     <h2 class="tm-blue-text tm-welcome-title tm-margin-b-45">Список рецептов</h2>
                                 </header>
+                                <a href="{% url 'add_dish' %}">
+                              <button type="submit" class="btn btn-primary">Добавить свой рецепт</button>
+                            </a>
                                 <form action="{% url 'search' %}" method="get">
                                   <input name="search" placeholder="Искать здесь..." type="search">
-                                  <button type="submit">Поиск</button>
+                                  <button class="btn btn-primary" type="submit">Поиск</button>
                                 </form>
                                 {% if request.resolver_match.view_name != "search" %}
 
 
-                                <label for="dropdown-checkbox" class="dropdown-btn">Фильтр</label>
+                                <label for="dropdown-checkbox" class="btn btn-primary">Фильтр</label>
                                 <input type="checkbox" id="dropdown-checkbox" class="dropdown-checkbox">
                                 <div class="dropdown-content">
-                                    <form method="get" action="{{get_suc}}">
+                                    <form method="get" >
+                                        <div class="form-style">
                                         {{ filter_form.as_p }}
-                                        <button type="submit">Применить</button>
+                                        </div>
+                                        <button class="btn btn-primary" type="submit">Применить</button>
                                     </form>
+
 
                                 </div>
                                 {% endif %}
@@ -34,10 +40,25 @@
                                     {% endif %}
 
                                 <ul>
+                                    {{bl}}
+<!--                                    {{black_list_by_ingredients}}-->
                                 {% for dish in dishes %}
-                                    <h2><a href="{{ dish.href }}">{{ dish }}</a></h2>
+                                    <h2><a href="{% url 'dish' dish.pk %}">{{ dish }}</a></h2>
+                                    {% if dish.pk not in black_list %}
+                                    <form action="{% url 'add_dish_to_black_list' dish.pk %}">
+                                    <button type="submit">Добавить в чёрный список</button>
+                                    </form>
+                                    {% else %}
+                                    <form action="{% url 'delete_dish_from_black_list' dish.pk %}">
+                                    <button type="submit">Удалить из чёрного списка</button>
+                                    </form>
+                                    {% endif %}
+                                    {% if dish.pk in black_list_by_ingredients %}
+                                    <h3>Это блюдо в чс по ингредиентам</h3>
+                                    {% endif %}
                                     <div class="dish-container">
-                                        <img src="{{ dish.photo }}" width="300" height="300" alt='Фотка блюда' class="img-fluid">
+                                        <a href="{% url 'dish' dish.pk %}">
+                                            <img src="{{ dish.photo }}" width="300" height="300" alt='Фотка блюда' class="img-fluid">
                                         <div>
                                             <p> Калорий: {{ dish.calories }}</p>
                                             <p>Полное время готовки: {{ dish.total_cooking_time }}</p>

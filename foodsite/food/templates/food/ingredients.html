@@ -7,18 +7,37 @@
                             <!-- Welcome section -->
                             <section class="tm-section">
                                 <header>
-                                    <h2 class="tm-blue-text tm-welcome-title tm-margin-b-45">Список рецептов</h2>
+                                    <h2 class="tm-blue-text tm-welcome-title tm-margin-b-45">Список ингредиентов</h2>
                                 </header>
+                                <a href="{% url 'add_ingredient' %}">
+                              <button type="submit" class="btn btn-primary">Добавить ингредиент</button>
+                            </a>
                                 <form action="" method="get">
                                       <input name="search" placeholder="Искать здесь..." type="search">
-                                      <button type="submit">Поиск</button>
+                                      <button class="btn btn-primary"type="submit">Поиск</button>
                                 </form>
                                 <ul>
                                 {% for ingredient in ingredients %}
-                                <p> <h2><a href="{% url 'show_dishes_by_ing' ingredient.pk %}">{{ ingredient }}</li> </p>
+
+                                <p>
+                                    <h2><a href="{% url 'ingredient' ingredient.pk %}">{{ ingredient }}</li>
+                                    </p>
                                     </a>
                                     </h2>
+                                    {% if ingredient.pk not in black_list %}
+                                    <form action="{% url 'add_ingredient_to_black_list' ingredient.pk %}">
+                                    <button type="submit">Добавить в чёрный список</button>
+                                    </form>
+                                    {% else %}
+                                    <form action="{% url 'delete_ingredient_from_black_list' ingredient.pk %}">
+                                    <button type="submit">Удалить из чёрного списка</button>
+                                    </form>
+
+
+                                    {% endif %}
                                 {% endfor %}
+
+
                                 </ul>
 <!--                               <nav>-->
 <!--                                    <ul>-->

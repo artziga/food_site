@@ -352,3 +352,107 @@ textarea:-ms-input-placeholder {
   display: block;
 }
 
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  line-height: 1.42857143;
+  color: #555;
+  background-color: #fff;
+  background-image: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+  -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
+  -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+  transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+}
+
+.checkbox {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.checkbox label {
+  display: inline-block;
+  font-weight: normal;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.checkbox input[type="checkbox"] {
+  margin-top: 2px;
+  margin-right: 5px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 6px 12px;
+  margin-bottom: 0;
+  font-size: 14px;
+  font-weight: normal;
+  line-height: 1.42857143;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  background-image: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  background-color: #337ab7;
+  border-color: #2e6da4;
+  color: #fff;
+}
+
+.btn:hover,
+.btn:focus,
+.btn:active {
+  background-color: #286090;
+  border-color: #204d74;
+  color: #fff;
+}
+
+
+.form-style {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-gap: 10px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  margin-bottom: 15px;
+}
+
+.form-style label {
+  grid-column: 1 / 2;
+}
+
+.form-style input, .form-style select, .form-style textarea {
+  grid-column: 2 / 3;
+  width: 100%;
+  box-sizing: border-box;
+}
+form-style .checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-left: 10px;
+}
